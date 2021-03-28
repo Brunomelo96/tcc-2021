@@ -35,6 +35,19 @@ def get_grayscale_histogram(image):
         data[key] = 1
   return data
 
+def get_histogram(image):
+  data = {}
+  (height, width) = get_image_properties(image)
+
+  for i in range(height):
+    for j in range(width):
+      key = image[i][j]
+      if(key in data):
+        data[key] += 1
+      else:
+        data[key] = 1
+  return data
+
 def split_image_in_half(image):
   (height, _) = get_image_properties(image)
   fraction = math.floor(height/2)
@@ -103,19 +116,30 @@ def image_blue_filter(image):
   hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
   return cv2.inRange(hsv, lower_range, upper_range)
 
+def proccess_barcode(image):
+  (first_half, second_half) = split_image_in_half(image)
+  first_barcode = get_barcodes(first_half)
+  second_barcode = get_barcodes(second_half)
+
+  return first_barcode == second_barcode
+
+def get_is_image_empty(image):
+    mask = image_blue_filter(image)
+    WHITE_LEVEL_KEY = 255
+    kernel = cv2.getStructuringElement(cv2.MORPH_CROSS,(5,5))
+    
+    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
+    mask_histogram = get_histogram(mask)
+
+    return WHITE_LEVEL_KEY in mask_histogram
 
 
 def procces_image(path, output_path):
   image = read_image(path)
   image = correct_image_orientation(image)
-
-  (first_half, second_half) = split_image_in_half(image)
-  first_barcode = get_barcodes(first_half)
-  second_barcode = get_barcodes(second_half)
   
-  if(first_barcode == second_barcode):
-    image = image_blue_filter(image)
+  if(proccess_barcode(image)):
+    if(get_is_image_empty(image)):
+      print("PASSOU")
 
-    kernel = cv2.getStructuringElement(cv2.MORPH_CROSS,(5,5))
-    image = cv2.morphologyEx(image, cv2.MORPH_OPEN, kernel)
-    write_image(output_path, image)
+procces_image("D04Q1I1802200012.jpg", "test.png")
